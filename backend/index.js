@@ -312,7 +312,7 @@ app.get('/api/stats', async (req, res) => {
 app.post('/api/auth/login', (req, res) => {
     const { username, password } = req.body;
     const validUser = process.env.ADMIN_USER || 'admin';
-    const validPass = process.env.ADMIN_PASS || 'RealFarms@2026';
+    const validPass = process.env.ADMIN_PASS || '101005';
 
     if (username === validUser && password === validPass) {
         // Simple session token (username+timestamp hash)

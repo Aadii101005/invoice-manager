@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
-import { API_BASE } from './config';
+
+// Credentials from Vite env variables (set in Vercel dashboard too)
+const VALID_USER = import.meta.env.VITE_AUTH_USER || 'admin';
+const VALID_PASS = import.meta.env.VITE_AUTH_PASS || 'RealFarms@2026';
 
 export default function LoginPage({ onLogin }) {
   const [username, setUsername] = useState('');
@@ -9,33 +12,28 @@ export default function LoginPage({ onLogin }) {
   const [error, setError]       = useState('');
   const [shake, setShake]       = useState(false);
 
-  const handleSubmit = async (e) => {
+  const triggerError = (msg) => {
+    setError(msg);
+    setShake(true);
+    setTimeout(() => setShake(false), 600);
+  };
+
+  const handleSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    try {
-      const res  = await fetch(`${API_BASE}/api/auth/login`, {
-        method:  'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ username, password })
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        sessionStorage.setItem('auth_token', data.token);
+
+    // Small artificial delay for UX
+    setTimeout(() => {
+      if (username === VALID_USER && password === VALID_PASS) {
         sessionStorage.setItem('auth_user', username);
+        sessionStorage.setItem('auth_token', btoa(`${username}:${Date.now()}`));
         onLogin();
       } else {
-        setError(data.message || 'Invalid credentials');
-        setShake(true);
-        setTimeout(() => setShake(false), 600);
+        triggerError('Invalid username or password. Please try again.');
       }
-    } catch {
-      setError('Cannot connect to server. Make sure backend is running.');
-      setShake(true);
-      setTimeout(() => setShake(false), 600);
-    } finally {
       setLoading(false);
-    }
+    }, 500);
   };
 
   return (
@@ -46,7 +44,7 @@ export default function LoginPage({ onLogin }) {
       <div className="blob blob-3" />
 
       <div className={`login-box ${shake ? 'shake' : ''}`}>
-        {/* Logo / Brand */}
+        {/* Brand */}
         <div className="login-brand">
           <div className="login-logo">🌾</div>
           <h1 className="login-title">Real Farms</h1>
@@ -54,12 +52,11 @@ export default function LoginPage({ onLogin }) {
         </div>
 
         {/* Divider */}
-        <div className="login-divider">
-          <span>Secure Access</span>
-        </div>
+        <div className="login-divider"><span>Secure Access</span></div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="login-form">
+
           {/* Username */}
           <div className="login-field">
             <label htmlFor="username">Username</label>
@@ -103,23 +100,15 @@ export default function LoginPage({ onLogin }) {
           </div>
 
           {/* Error */}
-          {error && (
-            <div className="login-error">
-              ⚠️ {error}
-            </div>
-          )}
+          {error && <div className="login-error">⚠️ {error}</div>}
 
           {/* Submit */}
           <button type="submit" className="btn-login" disabled={loading}>
-            {loading ? (
-              <span className="login-spinner">⏳ Verifying...</span>
-            ) : '🔓 Sign In'}
+            {loading ? '⏳ Verifying...' : '🔓 Sign In'}
           </button>
         </form>
 
-        <p className="login-footer">
-          Protected system — authorised personnel only
-        </p>
+        <p className="login-footer">Protected system — authorised personnel only</p>
       </div>
     </div>
   );
