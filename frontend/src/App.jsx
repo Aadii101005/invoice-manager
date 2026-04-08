@@ -168,12 +168,14 @@ function App({ onLogout }) {
 
       {/* HEADER */}
       <header>
-        <div>
-          <h1>Invoice Manager</h1>
-          <p>Enterprise Billing &amp; Analytics</p>
+        <div className="header-top">
+          <div className="header-brand">
+            <h1>Invoice Manager</h1>
+            <p>Enterprise Billing &amp; Analytics</p>
+          </div>
+          <span className="header-user">👤 {sessionStorage.getItem('auth_user') || 'Admin'}</span>
         </div>
         <div className="header-actions">
-          <span className="header-user">👤 {sessionStorage.getItem('auth_user') || 'Admin'}</span>
           <button onClick={exportToExcel} className="btn-primary btn-excel">📊 Excel</button>
           <button onClick={handleCreateNew} className="btn-primary">+ Invoice</button>
           <button onClick={onLogout} className="btn-primary btn-logout" title="Sign Out">🔓 Logout</button>

@@ -28,15 +28,56 @@ body {
 /* ── Header ───────────────────────────────────────────────────────────────── */
 header {
   background: var(--header-bg);
-  padding: 1.1rem 1.5rem;
-  display: flex; justify-content: space-between; align-items: center;
-  gap: 1rem; flex-wrap: wrap;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
   box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
-header h1 { color: #f0f3f8; margin: 0; font-size: clamp(1.1rem, 4vw, 1.75rem); font-weight: 800; white-space: nowrap; }
-header p  { color: var(--text-muted); margin: 0.2rem 0 0; font-size: 0.8rem; }
 
-.header-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; flex-shrink: 0; }
+/* Row 1: brand + username */
+.header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+.header-brand h1 { color: #f0f3f8; margin: 0; font-size: clamp(1rem, 4vw, 1.5rem); font-weight: 800; white-space: nowrap; }
+.header-brand p  { color: var(--text-muted); margin: 0.15rem 0 0; font-size: 0.75rem; }
+
+/* Row 2: action buttons — always full width on mobile */
+.header-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  width: 100%;
+}
+.header-actions .btn-primary {
+  flex: 1;            /* equal width buttons */
+  text-align: center;
+  padding: 0.6rem 0.5rem;
+  font-size: 0.78rem;
+  min-width: 0;       /* allow shrinking */
+}
+
+/* On wider screens → single row */
+@media (min-width: 640px) {
+  header {
+    flex-direction: row;
+    align-items: center;
+    padding: 1.25rem 2rem;
+  }
+  .header-top { flex: 1; }
+  .header-actions {
+    width: auto;
+    flex-shrink: 0;
+  }
+  .header-actions .btn-primary {
+    flex: none;
+    padding: 0.65rem 1rem;
+    font-size: 0.82rem;
+  }
+}
 
 /* ── Main ─────────────────────────────────────────────────────────────────── */
 .main-content { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem; }
@@ -359,9 +400,10 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 
 /* ── Header user & logout ─────────────────────────────────────────────────── */
 .header-user {
-  color: rgba(240,243,248,0.6); font-size: .78rem; font-weight: 600;
-  padding: .5rem .8rem; border-radius: .5rem;
+  color: rgba(240,243,248,0.6); font-size: .72rem; font-weight: 600;
+  padding: .3rem .65rem; border-radius: .5rem;
   background: rgba(255,255,255,0.06); white-space: nowrap;
+  flex-shrink: 0;
 }
 .btn-logout {
   background: rgba(239,68,68,0.15) !important;
