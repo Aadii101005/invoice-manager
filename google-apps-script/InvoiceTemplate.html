@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #444; margin: 0; padding: 40px; }
+    .invoice-box { max-width: 800px; margin: auto; padding: 30px; border: 1px solid #eee; box-shadow: 0 0 10px rgba(0, 0, 0, 0.15); font-size: 16px; line-height: 24px; }
+    .invoice-header { display: flex; justify-content: space-between; margin-bottom: 40px; }
+    .invoice-header .logo { font-size: 32px; font-weight: bold; color: #2563eb; }
+    .invoice-header .details { text-align: right; }
+    .customer-details { margin-bottom: 40px; display: flex; justify-content: space-between; }
+    .customer-details div { flex: 1; }
+    table { width: 100%; line-height: inherit; text-align: left; border-collapse: collapse; }
+    table th { background: #f8fafc; border-bottom: 2px solid #e2e8f0; padding: 12px; font-weight: bold; }
+    table td { padding: 12px; border-bottom: 1px solid #eee; }
+    .total-section { margin-top: 40px; text-align: right; }
+    .total-row { display: flex; justify-content: flex-end; gap: 20px; font-size: 18px; }
+    .total-amount { font-weight: bold; color: #2563eb; font-size: 24px; padding-top: 10px; }
+    .footer { margin-top: 60px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 20px; }
+    .status-badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: bold; text-transform: uppercase; }
+    .status-paid { background: #dcfce7; color: #166534; }
+    .status-pending { background: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <div class="invoice-box">
+    <div class="invoice-header">
+      <div class="logo"><?= data.shopName ?></div>
+      <div class="details">
+        <b>Invoice #:</b> <?= data.invoiceId ?><br>
+        <b>Date:</b> <?= data.date ?><br>
+        <b>Payment:</b> <span class="status-badge <?= data.paymentStatus.toLowerCase() === 'paid' ? 'status-paid' : 'status-pending' ?>"><?= data.paymentStatus ?></span>
+      </div>
+    </div>
+
+    <div class="customer-details">
+      <div>
+        <b>From:</b><br>
+        <?= data.shopName ?><br>
+        <?= data.shopAddress ?><br>
+        <?= data.shopContact ?>
+      </div>
+      <div style="text-align: right;">
+        <b>Bill To:</b><br>
+        <?= data.customerName ?><br>
+        <?= data.customerEmail ?><br>
+        <?= data.customerPhone ?>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Quantity</th>
+          <th>Unit Price</th>
+          <th style="text-align: right;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><?= data.productName ?></td>
+          <td><?= data.quantity ?></td>
+          <td>$<?= data.pricePerUnit ?></td>
+          <td style="text-align: right;">$<?= data.subtotal ?></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="total-section">
+      <div class="total-row">
+        <span>Subtotal:</span>
+        <span>$<?= data.subtotal ?></span>
+      </div>
+      <div class="total-row">
+        <span>GST (18%):</span>
+        <span>$<?= data.taxAmount ?></span>
+      </div>
+      <div class="total-row total-amount">
+        <span>Grand Total:</span>
+        <span>$<?= data.totalAmount ?></span>
+      </div>
+    </div>
+
+    <div class="footer">
+      <p>Thank you for choosing <?= data.shopName ?>!</p>
+      <p>Payment Mode: <?= data.paymentMode ?></p>
+      <p>This is a computer-generated invoice.</p>
+    </div>
+  </div>
+</body>
+</html>
