@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
+import { API_BASE } from './config';
 
 const EMPTY_ITEM = { productName: '', quantity: '', pricePerUnit: '', capital: '' };
 
@@ -43,8 +44,8 @@ function App({ onLogout }) {
   const fetchData = async () => {
     try {
       const [invRes, statRes] = await Promise.all([
-        fetch('http://localhost:5000/api/invoices'),
-        fetch('http://localhost:5000/api/stats')
+        fetch(`${API_BASE}/api/invoices`),
+        fetch(`${API_BASE}/api/stats`)
       ]);
       setInvoices(await invRes.json());
       setStats(await statRes.json());
@@ -82,7 +83,7 @@ function App({ onLogout }) {
     }
     setLoading(true);
     try {
-      const url    = editingInvoice ? `http://localhost:5000/api/invoices/${editingInvoice.invoiceId}` : 'http://localhost:5000/api/invoices';
+      const url    = editingInvoice ? `${API_BASE}/api/invoices/${editingInvoice.invoiceId}` : `${API_BASE}/api/invoices`;
       const method = editingInvoice ? 'PUT' : 'POST';
       const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
       if (res.ok) {
@@ -111,7 +112,7 @@ function App({ onLogout }) {
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this invoice?')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/invoices/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${API_BASE}/api/invoices/${id}`, { method: 'DELETE' });
       if (res.ok) { alert('Deleted!'); fetchData(); }
       else alert('Error deleting');
     } catch { alert('Backend error'); }
@@ -121,7 +122,7 @@ function App({ onLogout }) {
   const handleSendEmail = async (id) => {
     setSendingEmailId(id);
     try {
-      const res  = await fetch(`http://localhost:5000/api/invoices/${id}/email`, { method: 'POST' });
+      const res  = await fetch(`${API_BASE}/api/invoices/${id}/email`, { method: 'POST' });
       const data = await res.json();
       alert(res.ok ? '📨 Email sent!' : 'Warning: ' + (data.error || 'Check .env'));
     } catch { alert('Backend email error'); }
