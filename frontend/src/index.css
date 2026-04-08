@@ -254,7 +254,7 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
 .login-bg {
   min-height: 100vh; width: 100%;
   display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  background: linear-gradient(135deg, #65759a 0%, #1e1b4b 50%, #092054 100%);
   position: relative; overflow: hidden; padding: 1rem;
 }
 

@@ -19,28 +19,28 @@ const sequelize = new Sequelize(
 );
 
 const Customer = sequelize.define('Customer', {
-    name:       { type: DataTypes.STRING, allowNull: false },
-    email:      { type: DataTypes.STRING, unique: true, allowNull: false },
-    phone:      { type: DataTypes.STRING },
+    name: { type: DataTypes.STRING, allowNull: false },
+    email: { type: DataTypes.STRING, unique: true, allowNull: false },
+    phone: { type: DataTypes.STRING },
     totalSpent: { type: DataTypes.FLOAT, defaultValue: 0 }
 });
 
 const Invoice = sequelize.define('Invoice', {
-    invoiceId:    { type: DataTypes.STRING, unique: true },
-    customerEmail:{ type: DataTypes.STRING },
-    productName:  { type: DataTypes.STRING },   // comma-separated summary
-    quantity:     { type: DataTypes.INTEGER },   // total qty
+    invoiceId: { type: DataTypes.STRING, unique: true },
+    customerEmail: { type: DataTypes.STRING },
+    productName: { type: DataTypes.STRING },   // comma-separated summary
+    quantity: { type: DataTypes.INTEGER },   // total qty
     pricePerUnit: { type: DataTypes.FLOAT },
-    capital:      { type: DataTypes.FLOAT, defaultValue: 0 },
-    profit:       { type: DataTypes.FLOAT, defaultValue: 0 },
-    totalAmount:  { type: DataTypes.FLOAT },
-    paymentMode:  { type: DataTypes.STRING },
-    paymentStatus:{ type: DataTypes.STRING },
-    items:        { type: DataTypes.TEXT, defaultValue: null } // JSON array of line items
+    capital: { type: DataTypes.FLOAT, defaultValue: 0 },
+    profit: { type: DataTypes.FLOAT, defaultValue: 0 },
+    totalAmount: { type: DataTypes.FLOAT },
+    paymentMode: { type: DataTypes.STRING },
+    paymentStatus: { type: DataTypes.STRING },
+    items: { type: DataTypes.TEXT, defaultValue: null } // JSON array of line items
 });
 
 Invoice.belongsTo(Customer, { foreignKey: 'customerEmail', targetKey: 'email' });
-Customer.hasMany(Invoice,  { foreignKey: 'customerEmail', sourceKey: 'email' });
+Customer.hasMany(Invoice, { foreignKey: 'customerEmail', sourceKey: 'email' });
 
 sequelize.authenticate()
     .then(() => { console.log('✅ Connected to MySQL Database successfully'); return sequelize.sync({ alter: true }); })
@@ -51,20 +51,20 @@ const transporter = nodemailer.createTransport({
     auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
 });
 
-const fs   = require('fs');
+const fs = require('fs');
 const path = require('path');
 
 // ── PDF HTML Generator ───────────────────────────────────────────────────────
 const generateHTML = (data) => {
     const jpegPath = path.join(__dirname, 'realfarm.jpeg');
-    const pngPath  = path.join(__dirname, 'logo.png');
-    const jpgPath  = path.join(__dirname, 'logo.jpg');
+    const pngPath = path.join(__dirname, 'logo.png');
+    const jpgPath = path.join(__dirname, 'logo.jpg');
     let logoSrc = 'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
     try {
-        if (fs.existsSync(jpegPath))     logoSrc = `data:image/jpeg;base64,${fs.readFileSync(jpegPath).toString('base64')}`;
+        if (fs.existsSync(jpegPath)) logoSrc = `data:image/jpeg;base64,${fs.readFileSync(jpegPath).toString('base64')}`;
         else if (fs.existsSync(pngPath)) logoSrc = `data:image/png;base64,${fs.readFileSync(pngPath).toString('base64')}`;
         else if (fs.existsSync(jpgPath)) logoSrc = `data:image/jpeg;base64,${fs.readFileSync(jpgPath).toString('base64')}`;
-    } catch(e) {}
+    } catch (e) { }
 
     // Resolve items — new array format OR legacy single product
     let items = [];
@@ -114,14 +114,14 @@ const generateHTML = (data) => {
       </div>
       <div class="billing">
         <div class="bill-to info"><h3>Billed To</h3>
-          <strong style="font-size:16px;">${data.customerName||''}</strong><br>
-          ${data.customerPhone||''}<br>${data.customerEmail||''}
+          <strong style="font-size:16px;">${data.customerName || ''}</strong><br>
+          ${data.customerPhone || ''}<br>${data.customerEmail || ''}
         </div>
         <div class="inv-info info"><h3>Invoice Details</h3>
-          <strong>Invoice No:</strong> ${data.invoiceId||''}<br>
+          <strong>Invoice No:</strong> ${data.invoiceId || ''}<br>
           <strong>Date:</strong> ${new Date().toLocaleDateString()}<br>
-          <strong>Status:</strong> <span style="text-transform:uppercase;font-weight:bold;color:${statusColor};">${data.paymentStatus||''}</span><br>
-          <strong>Mode:</strong> ${data.paymentMode||''}
+          <strong>Status:</strong> <span style="text-transform:uppercase;font-weight:bold;color:${statusColor};">${data.paymentStatus || ''}</span><br>
+          <strong>Mode:</strong> ${data.paymentMode || ''}
         </div>
       </div>
       <table class="items">
@@ -135,8 +135,8 @@ const generateHTML = (data) => {
       </table>
       <div class="totals">
         <table class="totals-tbl">
-          <tr><th style="text-align:left;color:#6b7280;">Subtotal</th><td style="text-align:right;color:#6b7280;">₹${data.totalAmount||''}</td></tr>
-          <tr><th style="text-align:left;">Grand Total</th><td style="text-align:right;">₹${data.totalAmount||''}</td></tr>
+          <tr><th style="text-align:left;color:#6b7280;">Subtotal</th><td style="text-align:right;color:#6b7280;">₹${data.totalAmount || ''}</td></tr>
+          <tr><th style="text-align:left;">Grand Total</th><td style="text-align:right;">₹${data.totalAmount || ''}</td></tr>
         </table>
       </div>
       <div class="footer"><p>Thank you for doing business with Real Farms. We appreciate your trust in our quality products!</p></div>
@@ -174,11 +174,11 @@ app.post('/api/invoices', async (req, res) => {
         await Invoice.create({
             invoiceId, customerEmail,
             productName: productSummary,
-            quantity:    totalQty,
+            quantity: totalQty,
             pricePerUnit: parseFloat(invoiceItems[0].pricePerUnit),
-            capital:      parseFloat(invoiceItems[0].capital),
-            profit:       parseFloat(totalProfit.toFixed(2)),
-            totalAmount:  parseFloat(totalAmount.toFixed(2)),
+            capital: parseFloat(invoiceItems[0].capital),
+            profit: parseFloat(totalProfit.toFixed(2)),
+            totalAmount: parseFloat(totalAmount.toFixed(2)),
             paymentMode, paymentStatus,
             items: JSON.stringify(invoiceItems)
         });
@@ -231,11 +231,11 @@ app.put('/api/invoices/:id', async (req, res) => {
         await invoice.update({
             customerEmail: customerEmail || invoice.customerEmail,
             productName: invoiceItems.map(i => i.productName).join(', '),
-            quantity:    invoiceItems.reduce((s, i) => s + Number(i.quantity), 0),
+            quantity: invoiceItems.reduce((s, i) => s + Number(i.quantity), 0),
             pricePerUnit: parseFloat(invoiceItems[0].pricePerUnit),
-            capital:      parseFloat(invoiceItems[0].capital),
-            profit:       parseFloat(totalProfit.toFixed(2)),
-            totalAmount:  parseFloat(totalAmount.toFixed(2)),
+            capital: parseFloat(invoiceItems[0].capital),
+            profit: parseFloat(totalProfit.toFixed(2)),
+            totalAmount: parseFloat(totalAmount.toFixed(2)),
             paymentStatus, paymentMode,
             items: JSON.stringify(invoiceItems)
         });
@@ -301,10 +301,10 @@ app.post('/api/invoices/:id/email', async (req, res) => {
 
 // ── GET /api/stats ───────────────────────────────────────────────────────────
 app.get('/api/stats', async (req, res) => {
-    const totalRevenue  = await Invoice.sum('totalAmount') || 0;
-    const totalOrders   = await Invoice.count();
+    const totalRevenue = await Invoice.sum('totalAmount') || 0;
+    const totalOrders = await Invoice.count();
     const pendingAmount = await Invoice.sum('totalAmount', { where: { paymentStatus: 'Pending' } }) || 0;
-    const totalProfit   = await Invoice.sum('profit') || 0;
+    const totalProfit = await Invoice.sum('profit') || 0;
     res.json({ totalRevenue, totalOrders, pendingAmount, totalProfit });
 });
 
@@ -312,7 +312,7 @@ app.get('/api/stats', async (req, res) => {
 app.post('/api/auth/login', (req, res) => {
     const { username, password } = req.body;
     const validUser = process.env.ADMIN_USER || 'admin';
-    const validPass = process.env.ADMIN_PASS || 'RealFarms@2024';
+    const validPass = process.env.ADMIN_PASS || 'RealFarms@2026';
 
     if (username === validUser && password === validPass) {
         // Simple session token (username+timestamp hash)
