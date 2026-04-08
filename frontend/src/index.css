@@ -53,11 +53,16 @@ header {
   width: 100%;
 }
 .header-actions .btn-primary {
-  flex: 1;            /* equal width buttons */
+  flex: 1;
   text-align: center;
-  padding: 0.6rem 0.5rem;
-  font-size: 0.78rem;
-  min-width: 0;       /* allow shrinking */
+  padding: 0.6rem 0.4rem;
+  font-size: 0.82rem;
+  min-width: 0;
+}
+
+/* Hide button text labels on very small screens — show icon only */
+@media (max-width: 420px) {
+  .btn-label { display: none; }
 }
 
 /* On wider screens → single row */
@@ -77,6 +82,7 @@ header {
     padding: 0.65rem 1rem;
     font-size: 0.82rem;
   }
+  .btn-label { display: inline; }
 }
 
 /* ── Main ─────────────────────────────────────────────────────────────────── */

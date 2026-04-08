@@ -124,8 +124,14 @@ function App({ onLogout }) {
     try {
       const res  = await fetch(`${API_BASE}/api/invoices/${id}/email`, { method: 'POST' });
       const data = await res.json();
-      alert(res.ok ? '📨 Email sent!' : 'Warning: ' + (data.error || 'Check .env'));
-    } catch { alert('Backend email error'); }
+      if (res.ok) {
+        alert('📨 Email sent successfully!');
+      } else {
+        alert('⚠️ Email failed: ' + (data.error || 'Check email settings in backend .env'));
+      }
+    } catch {
+      alert('⚠️ Cannot reach the backend server.\n\nThis feature requires the backend to be running and connected to the database.\n\nIf using Vercel, make sure the backend service is deployed and environment variables are set.');
+    }
     setSendingEmailId(null);
   };
 
@@ -176,9 +182,15 @@ function App({ onLogout }) {
           <span className="header-user">👤 {sessionStorage.getItem('auth_user') || 'Admin'}</span>
         </div>
         <div className="header-actions">
-          <button onClick={exportToExcel} className="btn-primary btn-excel">📊 Excel</button>
-          <button onClick={handleCreateNew} className="btn-primary">+ Invoice</button>
-          <button onClick={onLogout} className="btn-primary btn-logout" title="Sign Out">🔓 Logout</button>
+          <button onClick={exportToExcel} className="btn-primary btn-excel">
+            📊<span className="btn-label"> Excel</span>
+          </button>
+          <button onClick={handleCreateNew} className="btn-primary">
+            +<span className="btn-label"> Invoice</span>
+          </button>
+          <button onClick={onLogout} className="btn-primary btn-logout" title="Sign Out">
+            🔓<span className="btn-label"> Logout</span>
+          </button>
         </div>
       </header>
 
