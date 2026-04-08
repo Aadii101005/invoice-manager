@@ -308,4 +308,18 @@ app.get('/api/stats', async (req, res) => {
     res.json({ totalRevenue, totalOrders, pendingAmount, totalProfit });
 });
 
+// ── POST /api/auth/login ─────────────────────────────────────────────────────
+app.post('/api/auth/login', (req, res) => {
+    const { username, password } = req.body;
+    const validUser = process.env.ADMIN_USER || 'admin';
+    const validPass = process.env.ADMIN_PASS || 'RealFarms@2024';
+
+    if (username === validUser && password === validPass) {
+        // Simple session token (username+timestamp hash)
+        const token = Buffer.from(`${username}:${Date.now()}`).toString('base64');
+        return res.json({ success: true, token });
+    }
+    return res.status(401).json({ success: false, message: 'Invalid credentials' });
+});
+
 app.listen(PORT, () => console.log(`🚀 Server fully connected on http://localhost:${PORT}`));

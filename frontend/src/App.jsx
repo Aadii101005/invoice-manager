@@ -22,7 +22,7 @@ const PRODUCTS = [
   'Akhrot (Walnut)','Anjeer (Dry Fig)','Munakka','Chironji','Dry Dates (Khajoor)'
 ];
 
-function App() {
+function App({ onLogout }) {
   const [invoices, setInvoices]       = useState([]);
   const [stats, setStats]             = useState({ totalRevenue: 0, totalOrders: 0, pendingAmount: 0, totalProfit: 0 });
   const [showForm, setShowForm]       = useState(false);
@@ -172,8 +172,10 @@ function App() {
           <p>Enterprise Billing &amp; Analytics</p>
         </div>
         <div className="header-actions">
+          <span className="header-user">👤 {sessionStorage.getItem('auth_user') || 'Admin'}</span>
           <button onClick={exportToExcel} className="btn-primary btn-excel">📊 Excel</button>
           <button onClick={handleCreateNew} className="btn-primary">+ Invoice</button>
+          <button onClick={onLogout} className="btn-primary btn-logout" title="Sign Out">🔓 Logout</button>
         </div>
       </header>
 
