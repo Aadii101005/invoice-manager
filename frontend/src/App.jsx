@@ -26,10 +26,14 @@ const PRODUCTS = [
 function App({ onLogout }) {
   const [invoices, setInvoices]       = useState([]);
   const [stats, setStats]             = useState({ totalRevenue: 0, totalOrders: 0, pendingAmount: 0, totalProfit: 0 });
+  const [products, setProducts]       = useState([]);
   const [showForm, setShowForm]       = useState(false);
+  const [showProductModal, setShowProductModal] = useState(false);
   const [loading, setLoading]         = useState(false);
   const [sendingEmailId, setSendingEmailId] = useState(null);
   const [editingInvoice, setEditingInvoice] = useState(null);
+
+  const [newProduct, setNewProduct] = useState({ name: '', pricePerUnit: '', capital: '' });
 
   const [formData, setFormData] = useState({
     customerName:  '',
@@ -43,15 +47,43 @@ function App({ onLogout }) {
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchData = async () => {
     try {
-      const [invRes, statRes] = await Promise.all([
+      const [invRes, statRes, prodRes] = await Promise.all([
         fetch(`${API_BASE}/api/invoices`),
-        fetch(`${API_BASE}/api/stats`)
+        fetch(`${API_BASE}/api/stats`),
+        fetch(`${API_BASE}/api/products`)
       ]);
       setInvoices(await invRes.json());
       setStats(await statRes.json());
+      setProducts(await prodRes.json());
     } catch (err) { console.error('Fetch error:', err); }
   };
   useEffect(() => { fetchData(); }, []);
+
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    if (!newProduct.name || !newProduct.pricePerUnit) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/products`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newProduct)
+      });
+      if (res.ok) {
+        setNewProduct({ name: '', pricePerUnit: '', capital: '' });
+        fetchData();
+      }
+    } catch (err) { alert('Failed to add product'); }
+    setLoading(false);
+  };
+
+  const handleDeleteProduct = async (id) => {
+    if (!window.confirm('Delete this product?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/products/${id}`, { method: 'DELETE' });
+      if (res.ok) fetchData();
+    } catch (err) { alert('Failed to delete product'); }
+  };
 
   // ── Item helpers ───────────────────────────────────────────────────────────
   const addItem = () =>
@@ -64,6 +96,16 @@ function App({ onLogout }) {
     setFormData(p => {
       const items = [...p.items];
       items[idx] = { ...items[idx], [field]: value };
+
+      // Auto-fill if product name matches a manual product
+      if (field === 'productName') {
+        const found = products.find(prod => prod.name === value);
+        if (found) {
+          items[idx].pricePerUnit = String(found.pricePerUnit);
+          items[idx].capital = String(found.capital);
+        }
+      }
+
       return { ...p, items };
     });
 
@@ -90,8 +132,13 @@ function App({ onLogout }) {
         alert(editingInvoice ? 'Invoice updated!' : 'Invoice generated & emailed!');
         closeForm();
         fetchData();
-      } else { alert('Error processing invoice'); }
-    } catch { alert('Failed to connect to backend'); }
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        alert('Error processing invoice: ' + (errorData.details || errorData.error || 'Unknown error'));
+      }
+    } catch (err) {
+      alert('Failed to connect to backend: ' + err.message);
+    }
     finally { setLoading(false); }
   };
 
@@ -185,6 +232,9 @@ function App({ onLogout }) {
           <button onClick={exportToExcel} className="btn-primary btn-excel">
             📊<span className="btn-label"> Excel</span>
           </button>
+          <button onClick={() => setShowProductModal(true)} className="btn-primary">
+            📦<span className="btn-label"> Products</span>
+          </button>
           <button onClick={handleCreateNew} className="btn-primary">
             +<span className="btn-label"> Invoice</span>
           </button>
@@ -241,7 +291,8 @@ function App({ onLogout }) {
 
                 {/* datalist (shared) */}
                 <datalist id="product-list">
-                  {PRODUCTS.map(p => <option key={p} value={p} />)}
+                  {products.map(p => <option key={p.id} value={p.name} />)}
+                  {PRODUCTS.map(p => <option key={`static-${p}`} value={p} />)}
                 </datalist>
 
                 <div className="items-list">
@@ -377,6 +428,57 @@ function App({ onLogout }) {
             </table>
           </div>
         </div>
+
+        {/* PRODUCT MANAGEMENT MODAL */}
+        {showProductModal && (
+          <div className="modal-overlay">
+            <div className="glass-card modal-content" style={{ maxWidth: '500px' }}>
+              <div className="modal-header">
+                <h2>📦 Product Management</h2>
+                <button onClick={() => setShowProductModal(false)} className="btn-close">×</button>
+              </div>
+
+              <form onSubmit={handleAddProduct} className="invoice-form" style={{ marginBottom: '1.5rem' }}>
+                <div className="form-section-label">Add New Product</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <input required placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} />
+                  <div className="form-grid-2">
+                    <input required type="number" step="0.01" placeholder="Price / Unit" value={newProduct.pricePerUnit} onChange={e => setNewProduct({ ...newProduct, pricePerUnit: e.target.value })} />
+                    <input required type="number" step="0.01" placeholder="Capital / Unit" value={newProduct.capital} onChange={e => setNewProduct({ ...newProduct, capital: e.target.value })} />
+                  </div>
+                  <button type="submit" className="btn-submit" style={{ marginTop: '0.5rem' }}>Add Product</button>
+                </div>
+              </form>
+
+              <div className="form-section-label">Existing Products</div>
+              <div className="table-wrapper" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                <table style={{ minWidth: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ padding: '0.5rem' }}>Name</th>
+                      <th style={{ padding: '0.5rem' }}>Price</th>
+                      <th style={{ padding: '0.5rem' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map(p => (
+                      <tr key={p.id}>
+                        <td style={{ padding: '0.5rem' }}>{p.name}</td>
+                        <td style={{ padding: '0.5rem' }}>₹{p.pricePerUnit}</td>
+                        <td style={{ padding: '0.5rem' }}>
+                          <button onClick={() => handleDeleteProduct(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem' }}>🗑️</button>
+                        </td>
+                      </tr>
+                    ))}
+                    {products.length === 0 && (
+                      <tr><td colSpan="3" style={{ textAlign: 'center', padding: '1rem', color: '#94a3b8' }}>No manual products added.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

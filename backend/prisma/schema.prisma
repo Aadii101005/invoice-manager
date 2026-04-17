@@ -35,3 +35,11 @@ model Invoice {
   createdAt     DateTime @default(now())
   customer      Customer @relation(fields: [customerEmail], references: [email])
 }
+
+model Product {
+  id           Int      @id @default(autoincrement())
+  name         String   @unique
+  pricePerUnit Float
+  capital      Float    @default(0)
+  createdAt    DateTime @default(now())
+}

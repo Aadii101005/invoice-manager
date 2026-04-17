@@ -39,6 +39,12 @@ const Invoice = sequelize.define('Invoice', {
     items: { type: DataTypes.TEXT, defaultValue: null } // JSON array of line items
 });
 
+const Product = sequelize.define('Product', {
+    name: { type: DataTypes.STRING, unique: true, allowNull: false },
+    pricePerUnit: { type: DataTypes.FLOAT, allowNull: false },
+    capital: { type: DataTypes.FLOAT, defaultValue: 0 }
+});
+
 Invoice.belongsTo(Customer, { foreignKey: 'customerEmail', targetKey: 'email' });
 Customer.hasMany(Invoice, { foreignKey: 'customerEmail', sourceKey: 'email' });
 
@@ -160,9 +166,10 @@ app.post('/api/invoices', async (req, res) => {
     const productSummary = invoiceItems.map(i => i.productName).join(', ');
     const totalQty = invoiceItems.reduce((s, i) => s + Number(i.quantity), 0);
 
-    const firstFour = customerName.substring(0, 4).toUpperCase();
-    const lastThree = customerPhone.slice(-3);
-    const invoiceId = `INV${firstFour}${lastThree}`;
+    const firstFour = (customerName || 'CUST').substring(0, 4).toUpperCase();
+    const lastThree = (customerPhone || '000').slice(-3);
+    const uniqueSuffix = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
+    const invoiceId = `INV-${firstFour}-${lastThree}-${uniqueSuffix}`;
 
     const invoiceData = { customerName, customerEmail, customerPhone, items: invoiceItems, invoiceId, totalAmount: totalAmount.toFixed(2), paymentMode, paymentStatus };
 
@@ -200,8 +207,12 @@ app.post('/api/invoices', async (req, res) => {
 
         res.json({ success: true, invoiceId });
     } catch (err) {
-        console.error('API Error:', err.message);
-        res.status(500).json({ error: 'Failed to process invoice', details: err.message });
+        console.error('API Error:', err);
+        res.status(500).json({ 
+            error: 'Failed to process invoice', 
+            details: err.message,
+            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        });
     }
 });
 
@@ -306,6 +317,38 @@ app.get('/api/stats', async (req, res) => {
     const pendingAmount = await Invoice.sum('totalAmount', { where: { paymentStatus: 'Pending' } }) || 0;
     const totalProfit = await Invoice.sum('profit') || 0;
     res.json({ totalRevenue, totalOrders, pendingAmount, totalProfit });
+});
+
+// ── GET /api/products ────────────────────────────────────────────────────────
+app.get('/api/products', async (req, res) => {
+    try {
+        const products = await Product.findAll({ order: [['name', 'ASC']] });
+        res.json(products);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch products' });
+    }
+});
+
+// ── POST /api/products ───────────────────────────────────────────────────────
+app.post('/api/products', async (req, res) => {
+    try {
+        const { name, pricePerUnit, capital } = req.body;
+        const product = await Product.create({ name, pricePerUnit, capital });
+        res.json(product);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create product', details: err.message });
+    }
+});
+
+// ── DELETE /api/products/:id ─────────────────────────────────────────────────
+app.delete('/api/products/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Product.destroy({ where: { id } });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete product' });
+    }
 });
 
 // ── POST /api/auth/login ─────────────────────────────────────────────────────
