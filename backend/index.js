@@ -45,6 +45,15 @@ const Product = sequelize.define('Product', {
     capital: { type: DataTypes.FLOAT, defaultValue: 0 }
 });
 
+const Expense = sequelize.define('Expense', {
+    description: { type: DataTypes.STRING, allowNull: false },
+    amount: { type: DataTypes.FLOAT, allowNull: false },
+    category: { type: DataTypes.STRING },
+    ownerName: { type: DataTypes.STRING }
+});
+
+
+
 Invoice.belongsTo(Customer, { foreignKey: 'customerEmail', targetKey: 'email' });
 Customer.hasMany(Invoice, { foreignKey: 'customerEmail', sourceKey: 'email' });
 
@@ -84,11 +93,12 @@ const generateHTML = (data) => {
         const rowTotal = (Number(item.quantity) * Number(item.pricePerUnit)).toFixed(2);
         return `<tr style="${idx % 2 === 1 ? 'background:#f9fafb;' : ''}">
           <td style="font-weight:bold;color:#1e3a8a;padding:13px 15px;">${item.productName}</td>
-          <td style="text-align:center;padding:13px 15px;">${item.quantity}</td>
+          <td style="text-align:center;padding:13px 15px;">${item.quantity} ${item.unit || ''}</td>
           <td style="text-align:right;padding:13px 15px;">₹${Number(item.pricePerUnit).toFixed(2)}</td>
           <td style="text-align:right;font-weight:bold;color:#1f2937;padding:13px 15px;">₹${rowTotal}</td>
         </tr>`;
     }).join('');
+
 
     const statusColor = data.paymentStatus === 'Paid' ? '#16a34a' : '#d97706';
 
@@ -133,10 +143,11 @@ const generateHTML = (data) => {
       <table class="items">
         <thead><tr>
           <th>Item Description</th>
-          <th style="text-align:center;">Qty</th>
-          <th style="text-align:right;">Unit Price</th>
+          <th style="text-align:center;">Qty / Unit</th>
+          <th style="text-align:right;">Selling Price</th>
           <th style="text-align:right;">Amount</th>
         </tr></thead>
+
         <tbody>${itemRows}</tbody>
       </table>
       <div class="totals">
@@ -163,6 +174,8 @@ app.post('/api/invoices', async (req, res) => {
 
     const totalAmount = invoiceItems.reduce((s, i) => s + Number(i.quantity) * Number(i.pricePerUnit), 0);
     const totalProfit = invoiceItems.reduce((s, i) => s + Number(i.quantity) * (Number(i.pricePerUnit) - Number(i.capital)), 0);
+
+
     const productSummary = invoiceItems.map(i => i.productName).join(', ');
     const totalQty = invoiceItems.reduce((s, i) => s + Number(i.quantity), 0);
 
@@ -238,6 +251,9 @@ app.put('/api/invoices/:id', async (req, res) => {
         const invoiceItems = resolveItems(req.body);
         const totalAmount = invoiceItems.reduce((s, i) => s + Number(i.quantity) * Number(i.pricePerUnit), 0);
         const totalProfit = invoiceItems.reduce((s, i) => s + Number(i.quantity) * (Number(i.pricePerUnit) - Number(i.capital)), 0);
+    
+
+
 
         await invoice.update({
             customerEmail: customerEmail || invoice.customerEmail,
@@ -312,12 +328,59 @@ app.post('/api/invoices/:id/email', async (req, res) => {
 
 // ── GET /api/stats ───────────────────────────────────────────────────────────
 app.get('/api/stats', async (req, res) => {
-    const totalRevenue = await Invoice.sum('totalAmount') || 0;
-    const totalOrders = await Invoice.count();
-    const pendingAmount = await Invoice.sum('totalAmount', { where: { paymentStatus: 'Pending' } }) || 0;
-    const totalProfit = await Invoice.sum('profit') || 0;
-    res.json({ totalRevenue, totalOrders, pendingAmount, totalProfit });
+    try {
+        const totalRevenue = await Invoice.sum('totalAmount') || 0;
+        const totalOrders = await Invoice.count();
+        const pendingAmount = await Invoice.sum('totalAmount', { where: { paymentStatus: 'Pending' } }) || 0;
+        const totalExpenses = await Expense.sum('amount') || 0;
+        const trueProfit = await Invoice.sum('profit') || 0;
+        
+        // Following User Formula:
+        // Gross Profit = Selling Price - Purchase Cost
+        const grossProfit = trueProfit; 
+        
+        // Operating Expenses (12% Share + Daily Expenses)
+        const sharedProfit = grossProfit * 0.12;
+        
+        // Total Profit = Sum of (Gross - Share) - Daily Expenses
+        const totalProfitOverall = (grossProfit - sharedProfit) - totalExpenses;
+
+        // Owner wise expense breakdown
+        const expensesByOwner = await Expense.findAll({
+            attributes: [
+                'ownerName',
+                [sequelize.fn('SUM', sequelize.col('amount')), 'totalAmount']
+            ],
+            group: ['ownerName']
+        });
+
+        // Category wise expense breakdown
+        const expensesByCategory = await Expense.findAll({
+            attributes: [
+                'category',
+                [sequelize.fn('SUM', sequelize.col('amount')), 'totalAmount']
+            ],
+            group: ['category']
+        });
+
+        res.json({ 
+            totalRevenue, 
+            totalOrders, 
+            pendingAmount, 
+            trueProfit: grossProfit, // This is Total Gross Profit
+            sharedProfit,           // 12% Share
+            totalExpenses,          // Operating Expenses (Daily)
+            totalProfitOverall,     // Final Bottom Line
+            expensesByOwner,
+            expensesByCategory
+        });
+    } catch (err) {
+        console.error('Stats Error:', err);
+        res.status(500).json({ error: 'Failed to fetch stats' });
+    }
 });
+
+
 
 // ── GET /api/products ────────────────────────────────────────────────────────
 app.get('/api/products', async (req, res) => {
@@ -351,11 +414,45 @@ app.delete('/api/products/:id', async (req, res) => {
     }
 });
 
+// ── GET /api/expenses ────────────────────────────────────────────────────────
+app.get('/api/expenses', async (req, res) => {
+    try {
+        const expenses = await Expense.findAll({ order: [['createdAt', 'DESC']] });
+        res.json(expenses);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch expenses' });
+    }
+});
+
+// ── POST /api/expenses ───────────────────────────────────────────────────────
+app.post('/api/expenses', async (req, res) => {
+    try {
+        const { description, amount, category, ownerName } = req.body;
+        const expense = await Expense.create({ description, amount, category, ownerName });
+        res.json(expense);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create expense', details: err.message });
+    }
+});
+
+
+// ── DELETE /api/expenses/:id ─────────────────────────────────────────────────
+app.delete('/api/expenses/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await Expense.destroy({ where: { id } });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete expense' });
+    }
+});
+
+
 // ── POST /api/auth/login ─────────────────────────────────────────────────────
 app.post('/api/auth/login', (req, res) => {
     const { username, password } = req.body;
     const validUser = process.env.ADMIN_USER || 'admin';
-    const validPass = process.env.ADMIN_PASS || '101005';
+    const validPass = process.env.ADMIN_PASS || '123456';
 
     if (username === validUser && password === validPass) {
         // Simple session token (username+timestamp hash)

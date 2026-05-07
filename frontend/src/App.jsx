@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import * as XLSX from 'xlsx';
 import { API_BASE } from './config';
 
-const EMPTY_ITEM = { productName: '', quantity: '', pricePerUnit: '', capital: '' };
+const EMPTY_ITEM = { productName: '', quantity: '', unit: 'Kg', pricePerUnit: '', capital: '' };
+
 
 const PRODUCTS = [
   'Sona Mansoori','Kolam','Jeera Kolam','HMT Kolam','Wada Kolam','Surti Kolam',
@@ -32,8 +33,13 @@ function App({ onLogout }) {
   const [loading, setLoading]         = useState(false);
   const [sendingEmailId, setSendingEmailId] = useState(null);
   const [editingInvoice, setEditingInvoice] = useState(null);
+  const [showExpenseList, setShowExpenseList] = useState(false);
+  const [expenses, setExpenses] = useState([]);
 
+  const [newExpense, setNewExpense] = useState({ description: '', amount: '', category: '', ownerName: '' });
   const [newProduct, setNewProduct] = useState({ name: '', pricePerUnit: '', capital: '' });
+
+
 
   const [formData, setFormData] = useState({
     customerName:  '',
@@ -47,16 +53,19 @@ function App({ onLogout }) {
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchData = async () => {
     try {
-      const [invRes, statRes, prodRes] = await Promise.all([
+      const [invRes, statRes, prodRes, expRes] = await Promise.all([
         fetch(`${API_BASE}/api/invoices`),
         fetch(`${API_BASE}/api/stats`),
-        fetch(`${API_BASE}/api/products`)
+        fetch(`${API_BASE}/api/products`),
+        fetch(`${API_BASE}/api/expenses`)
       ]);
       setInvoices(await invRes.json());
       setStats(await statRes.json());
       setProducts(await prodRes.json());
+      setExpenses(await expRes.json());
     } catch (err) { console.error('Fetch error:', err); }
   };
+
   useEffect(() => { fetchData(); }, []);
 
   const handleAddProduct = async (e) => {
@@ -85,6 +94,34 @@ function App({ onLogout }) {
     } catch (err) { alert('Failed to delete product'); }
   };
 
+  const handleAddExpense = async (e) => {
+    e.preventDefault();
+    if (!newExpense.description || !newExpense.amount) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/expenses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newExpense)
+      });
+      if (res.ok) {
+        setNewExpense({ description: '', amount: '', category: '', ownerName: '' });
+        fetchData();
+      }
+
+    } catch (err) { alert('Failed to add expense'); }
+    setLoading(false);
+  };
+
+  const handleDeleteExpense = async (id) => {
+    if (!window.confirm('Delete this expense?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/expenses/${id}`, { method: 'DELETE' });
+      if (res.ok) fetchData();
+    } catch (err) { alert('Failed to delete expense'); }
+  };
+
+
   // ── Item helpers ───────────────────────────────────────────────────────────
   const addItem = () =>
     setFormData(p => ({ ...p, items: [...p.items, { ...EMPTY_ITEM }] }));
@@ -111,7 +148,9 @@ function App({ onLogout }) {
 
   // computed totals
   const grandTotal  = formData.items.reduce((s, i) => s + (Number(i.quantity) * Number(i.pricePerUnit) || 0), 0);
-  const grandProfit = formData.items.reduce((s, i) => s + (Number(i.quantity) * (Number(i.pricePerUnit) - Number(i.capital)) || 0), 0);
+  const grandMarkup = formData.items.reduce((s, i) => s + (Number(i.quantity) * (Number(i.pricePerUnit) - Number(i.capital)) || 0), 0);
+  const grandProfit = grandMarkup * 0.12;
+
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e) => {
@@ -235,9 +274,14 @@ function App({ onLogout }) {
           <button onClick={() => setShowProductModal(true)} className="btn-primary">
             📦<span className="btn-label"> Products</span>
           </button>
+          <button onClick={() => setShowExpenseList(!showExpenseList)} className={`btn-primary ${showExpenseList ? 'btn-active' : ''}`}>
+            💸<span className="btn-label"> Daily Expense</span>
+          </button>
           <button onClick={handleCreateNew} className="btn-primary">
             +<span className="btn-label"> Invoice</span>
           </button>
+
+
           <button onClick={onLogout} className="btn-primary btn-logout" title="Sign Out">
             🔓<span className="btn-label"> Logout</span>
           </button>
@@ -250,19 +294,123 @@ function App({ onLogout }) {
         <div className="stats-grid">
           {[
             { label: 'Total Revenue',   value: `₹${Number(stats.totalRevenue).toLocaleString()}`,     note: 'Overall Sales',        color: '#10b981' },
-            { label: 'Total Profit',    value: `₹${Number(stats.totalProfit||0).toLocaleString()}`,   note: 'Overall Margins',      color: '#6366f1' },
-            { label: 'Pending',         value: `₹${Number(stats.pendingAmount).toLocaleString()}`,    note: 'Action required',      color: '#f59e0b' },
+            { label: 'Gross Profit',    value: `₹${Number(stats.trueProfit||0).toLocaleString()}`,    note: 'Sales - Purchase',     color: '#6366f1' },
+            { label: 'Shared Profit',   value: `₹${Number(stats.sharedProfit||0).toLocaleString()}`,  note: '12% Management',       color: '#f59e0b' },
+            { label: 'Total Profit',    value: `₹${Number(stats.totalProfitOverall||0).toLocaleString()}`, note: 'Final Net Income', color: '#10b981' },
+            { label: 'Daily Expense',   value: `₹${Number(stats.totalExpenses||0).toLocaleString()}`, note: 'Operating Costs',     color: '#ef4444' },
             { label: 'Total Orders',    value: stats.totalOrders,                                      note: 'Processed',            color: '#6366f1' },
           ].map(s => (
             <div key={s.label} className="glass-card stat-item">
               <h3>{s.label}</h3>
               <div className="value" style={{ color: s.color }}>{s.value}</div>
               <p style={{ fontSize: '0.75rem', color: s.color, margin: '0.4rem 0 0' }}>{s.note}</p>
+              
+              {s.label === 'Daily Expense' && (
+                <div style={{ marginTop: '0.8rem', borderTop: '1px solid rgba(239, 68, 68, 0.1)', paddingTop: '0.5rem' }}>
+                  {stats.expensesByOwner && stats.expensesByOwner.length > 0 && (
+                    <div className="owner-breakdown" style={{ marginBottom: '0.8rem' }}>
+                      <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#ef4444', marginBottom: '4px', textTransform: 'uppercase' }}>By Owner</div>
+                      {stats.expensesByOwner.map(own => (
+                        <div key={own.ownerName} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#64748b', marginBottom: '2px' }}>
+                          <span>{own.ownerName || 'Unknown'}:</span>
+                          <span style={{ fontWeight: '600' }}>₹{Number(own.totalAmount).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {stats.expensesByCategory && stats.expensesByCategory.length > 0 && (
+                    <div className="category-breakdown">
+                      <div style={{ fontSize: '0.65rem', fontWeight: '800', color: '#ef4444', marginBottom: '4px', textTransform: 'uppercase' }}>By Category</div>
+                      {stats.expensesByCategory.map(cat => (
+                        <div key={cat.category} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#64748b', marginBottom: '2px' }}>
+                          <span>{cat.category || 'Other'}:</span>
+                          <span style={{ fontWeight: '600' }}>₹{Number(cat.totalAmount).toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
+        
+        {/* COLLAPSIBLE EXPENSE TABLE */}
+        {showExpenseList && (
+          <div className="glass-card expense-dropdown-section" style={{ marginBottom: '2rem', animation: 'slideDown 0.4s ease-out' }}>
+            <div className="modal-header" style={{ marginBottom: '1.5rem' }}>
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>💸 Daily Expense Ledger</h2>
+              <button onClick={() => setShowExpenseList(false)} className="btn-close">×</button>
+            </div>
+
+            <div className="expense-container-grid">
+              {/* Form Side */}
+              <div className="expense-form-side">
+                <form onSubmit={handleAddExpense} className="invoice-form">
+                  <div className="form-section-label">Add New Entry</div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <input required placeholder="Description (e.g. Tea, Rent)" value={newExpense.description} onChange={e => setNewExpense({ ...newExpense, description: e.target.value })} />
+                    <select required value={newExpense.ownerName} onChange={e => setNewExpense({ ...newExpense, ownerName: e.target.value })}>
+                      <option value="">Select Owner</option>
+                      <option value="Aditya">Aditya</option>
+                      <option value="Dhruv">Dhruv</option>
+                      <option value="Ayush">Ayush</option>
+                    </select>
+                    <div className="form-grid-2">
+                      <input required type="number" step="0.01" placeholder="Amount (₹)" value={newExpense.amount} onChange={e => setNewExpense({ ...newExpense, amount: e.target.value })} />
+                      <select value={newExpense.category} onChange={e => setNewExpense({ ...newExpense, category: e.target.value })}>
+                        <option value="">Category</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Rent">Rent</option>
+                        <option value="Salaries">Salaries</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <button type="submit" className="btn-submit" style={{ marginTop: '0.5rem' }}>Save Expense</button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Table Side */}
+              <div className="expense-table-side">
+                <div className="form-section-label">Previous Records</div>
+                <div className="table-wrapper" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Owner</th>
+                        <th>Desc</th>
+                        <th>Amount</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {expenses.map(ex => (
+                        <tr key={ex.id}>
+                          <td style={{ fontSize: '0.8rem' }}>{new Date(ex.createdAt).toLocaleDateString()}</td>
+                          <td><strong>{ex.ownerName}</strong></td>
+                          <td>{ex.description}</td>
+                          <td style={{ fontWeight: 'bold' }}>₹{ex.amount}</td>
+                          <td>
+                            <button onClick={() => handleDeleteExpense(ex.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }}>🗑️</button>
+                          </td>
+                        </tr>
+                      ))}
+                      {expenses.length === 0 && (
+                        <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>No expenses found.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* MODAL */}
+
         {showForm && (
           <div className="modal-overlay">
             <div className="glass-card modal-content">
@@ -298,7 +446,8 @@ function App({ onLogout }) {
                 <div className="items-list">
                   {formData.items.map((item, idx) => {
                     const subtotal = (Number(item.quantity) * Number(item.pricePerUnit) || 0);
-                    const profit   = (Number(item.quantity) * (Number(item.pricePerUnit) - Number(item.capital)) || 0);
+                    const profit   = subtotal * 0.12;
+
                     return (
                       <div key={idx} className="item-row">
                         <div className="item-row-header">
@@ -315,15 +464,24 @@ function App({ onLogout }) {
                           />
                           <input required type="number" placeholder="Qty"
                             value={item.quantity} onChange={e => updateItem(idx, 'quantity', e.target.value)} />
-                          <input required type="number" placeholder="Price / Unit (₹)"
+                          <select required value={item.unit} onChange={e => updateItem(idx, 'unit', e.target.value)}>
+                            <option value="Kg">Kg</option>
+                            <option value="Litre">Litre</option>
+                            <option value="30 kg bag">30 kg bag</option>
+                            <option value="50 kg bag">50 kg bag</option>
+                          </select>
+                          <input required type="number" placeholder="Selling Price (₹)"
                             value={item.pricePerUnit} onChange={e => updateItem(idx, 'pricePerUnit', e.target.value)} />
-                          <input required type="number" placeholder="Capital (₹)"
+                          <input required type="number" placeholder="Buying Price (₹)"
                             value={item.capital} onChange={e => updateItem(idx, 'capital', e.target.value)} />
                         </div>
+
                         <div className="item-calcs">
                           <span>Subtotal: <strong className="calc-val">₹{subtotal.toFixed(2)}</strong></span>
-                          <span>Profit: <strong className={profit >= 0 ? 'calc-profit' : 'calc-loss'}>₹{profit.toFixed(2)}</strong></span>
+                          <span>Gross Profit: <strong className="calc-val" style={{color: '#6366f1'}}>₹{(Number(item.quantity) * (Number(item.pricePerUnit) - Number(item.capital))).toFixed(2)}</strong></span>
+                          <span>Net Profit (after 12%): <strong className="calc-profit">₹{((Number(item.quantity) * (Number(item.pricePerUnit) - Number(item.capital))) * 0.88).toFixed(2)}</strong></span>
                         </div>
+
                       </div>
                     );
                   })}
@@ -355,8 +513,8 @@ function App({ onLogout }) {
                     <strong>{formData.items.length}</strong>
                   </div>
                   <div className="summary-row">
-                    <span>Est. Profit</span>
-                    <strong className={grandProfit >= 0 ? 'calc-profit' : 'calc-loss'}>₹{grandProfit.toFixed(2)}</strong>
+                    <span>Est. Net Profit (after 12%)</span>
+                    <strong className={grandMarkup >= 0 ? 'calc-profit' : 'calc-loss'}>₹{(grandMarkup * 0.88).toFixed(2)}</strong>
                   </div>
                   <div className="summary-row grand-total-row">
                     <span>Grand Total</span>
@@ -387,7 +545,7 @@ function App({ onLogout }) {
                   <th>Date</th>
                   <th>Product(s)</th>
                   <th>Amount</th>
-                  <th>Profit</th>
+                  <th>Gross Profit</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -403,7 +561,7 @@ function App({ onLogout }) {
                       <span title={inv.productName} className="product-cell">{productDisplay(inv)}</span>
                     </td>
                     <td data-label="Amount" style={{ fontWeight: '800' }}>₹{Number(inv.totalAmount).toFixed(2)}</td>
-                    <td data-label="Profit" style={{ fontWeight: '700', color: '#6366f1' }}>₹{Number(inv.profit || 0).toFixed(2)}</td>
+                    <td data-label="Gross Profit" style={{ fontWeight: '700', color: '#6366f1' }}>₹{Number(inv.profit || 0).toFixed(2)}</td>
                     <td data-label="Status">
                       <span className={`badge badge-${inv.paymentStatus.toLowerCase()}`}>{inv.paymentStatus}</span>
                     </td>
@@ -443,9 +601,10 @@ function App({ onLogout }) {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <input required placeholder="Product Name" value={newProduct.name} onChange={e => setNewProduct({ ...newProduct, name: e.target.value })} />
                   <div className="form-grid-2">
-                    <input required type="number" step="0.01" placeholder="Price / Unit" value={newProduct.pricePerUnit} onChange={e => setNewProduct({ ...newProduct, pricePerUnit: e.target.value })} />
-                    <input required type="number" step="0.01" placeholder="Capital / Unit" value={newProduct.capital} onChange={e => setNewProduct({ ...newProduct, capital: e.target.value })} />
+                    <input required type="number" step="0.01" placeholder="Selling Price" value={newProduct.pricePerUnit} onChange={e => setNewProduct({ ...newProduct, pricePerUnit: e.target.value })} />
+                    <input required type="number" step="0.01" placeholder="Buying Price" value={newProduct.capital} onChange={e => setNewProduct({ ...newProduct, capital: e.target.value })} />
                   </div>
+
                   <button type="submit" className="btn-submit" style={{ marginTop: '0.5rem' }}>Add Product</button>
                 </div>
               </form>
@@ -485,3 +644,4 @@ function App({ onLogout }) {
 }
 
 export default App;
+

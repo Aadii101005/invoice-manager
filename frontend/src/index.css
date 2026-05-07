@@ -221,12 +221,13 @@ header {
 /* item inputs grid */
 .item-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: .55rem;
 }
-@media (min-width: 480px) {
-  .item-grid { grid-template-columns: 2fr 1fr 1fr 1fr; }
+@media (min-width: 600px) {
+  .item-grid { grid-template-columns: 2fr 0.7fr 1.2fr 1fr 1fr; }
 }
+
 .item-input-product { /* spans when on 2-col */  }
 
 /* per-item calcs */
@@ -416,4 +417,30 @@ input[type=number] { -moz-appearance: textfield; appearance: textfield; }
   color: #fca5a5 !important;
   border: 1px solid rgba(239,68,68,0.3) !important;
 }
-.btn-logout:hover { background: rgba(239,68,68,0.28) !important; }
+/* ── Expense Ledger Dropdown ────────────────────────────────────────────────── */
+.expense-dropdown-section {
+  background: white; border: 1.5px solid var(--primary);
+  box-shadow: 0 10px 40px rgba(99,102,241,0.15);
+}
+
+.expense-container-grid {
+  display: grid; grid-template-columns: 1fr; gap: 2rem;
+}
+@media (min-width: 900px) {
+  .expense-container-grid { grid-template-columns: 350px 1fr; }
+}
+
+.expense-form-side {
+  padding-right: 0; border-right: none;
+}
+@media (min-width: 900px) {
+  .expense-form-side { padding-right: 2rem; border-right: 1px solid var(--border); }
+}
+
+.btn-active { background: #1e1b4b !important; transform: scale(0.95); }
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+

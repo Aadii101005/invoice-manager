@@ -43,3 +43,14 @@ model Product {
   capital      Float    @default(0)
   createdAt    DateTime @default(now())
 }
+
+model Expense {
+  id          Int      @id @default(autoincrement())
+  description String
+  amount      Float
+  category    String?
+  ownerName   String?
+  createdAt   DateTime @default(now())
+}
+
+
